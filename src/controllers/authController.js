@@ -1,6 +1,5 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
@@ -70,55 +69,3 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
-exports.logout = async (req, res) => {
-    try {
-      // In a real app, you might want to:
-      // 1. Invalidate the token (if using JWT)
-      // 2. Clear session data (if using sessions)
-      // 3. Log the logout action
-      
-      res.status(200).json({ 
-        success: true,
-        message: 'Logged out successfully' 
-      });
-    } catch (err) {
-      console.error('Logout error:', err);
-      res.status(500).json({ 
-        success: false,
-        message: 'Logout failed',
-        error: err.message 
-      });
-    }
-  };
-
-  // authController.js
-exports.getProfile = async (req, res) => {
-    try {
-      // Assuming you have middleware that sets req.user
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-  
-      const [user] = await db.query(
-        'SELECT id, name, email, created_at FROM users WHERE id = ?', 
-        [req.user.id]
-      );
-  
-      if (user.length === 0) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.status(200).json({
-        success: true,
-        user: user[0]
-      });
-    } catch (err) {
-      console.error('Profile error:', err);
-      res.status(500).json({ 
-        success: false,
-        message: 'Failed to fetch profile',
-        error: err.message 
-      });
-    }
-  };
