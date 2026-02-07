@@ -1,7 +1,9 @@
-// src/controllers/quoteController.js
-const db = require('../config/db');
+const { Quote, QuoteItem, sequelize } = require('../models');
 
-exports.createQuote = (req, res) => {
+/**
+ * Create quote with items
+ */
+exports.createQuote = async (req, res) => {
   const {
     customer_name,
     quote_to,
@@ -13,56 +15,68 @@ exports.createQuote = (req, res) => {
     items
   } = req.body;
 
-  const insertQuote = `
-    INSERT INTO quotes (customer_name, quote_to, quote_number, date, total, payments_applied, balance_due)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
+  const transaction = await sequelize.transaction();
 
-  db.query(
-    insertQuote,
-    [customer_name, quote_to, quote_number, date, total, payments_applied, balance_due],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err });
+  try {
+    // Create quote
+    const quote = await Quote.create({
+      customer_name,
+      quote_to,
+      quote_number,
+      date,
+      total,
+      payments_applied,
+      balance_due
+    }, { transaction });
 
-      const quoteId = result.insertId;
-      const insertItems = items.map(item => [
-        quoteId,
-        item.description,
-        item.qty,
-        item.rate,
-        item.unit,
-        item.amount,
-        item.tax
-      ]);
+    // Create quote items
+    if (items && items.length > 0) {
+      const quoteItems = items.map(item => ({
+        quote_id: quote.id,
+        item_description: item.description,
+        qty: item.qty,
+        rate: item.rate,
+        unit: item.unit,
+        amount: item.amount,
+        tax: item.tax
+      }));
 
-      const insertItemsQuery = `
-        INSERT INTO quote_items (quote_id, item_description, qty, rate, unit, amount, tax)
-        VALUES ?
-      `;
-
-      db.query(insertItemsQuery, [insertItems], (err2) => {
-        if (err2) return res.status(500).json({ error: err2 });
-        res.status(201).json({ message: 'Quote saved successfully', quoteId });
-      });
+      await QuoteItem.bulkCreate(quoteItems, { transaction });
     }
-  );
+
+    await transaction.commit();
+
+    res.status(201).json({
+      message: 'Quote saved successfully',
+      quoteId: quote.id
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error creating quote:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
+/**
+ * Get the last quote number
+ */
+exports.getLastQuoteNumber = async (req, res) => {
+  try {
+    const lastQuote = await Quote.findOne({
+      order: [['id', 'DESC']],
+      attributes: ['quote_number']
+    });
 
-// Get the last quote number
-exports.getLastQuoteNumber = (req, res) => {
-  const query = `SELECT quote_number FROM quotes ORDER BY id DESC LIMIT 1`;
-
-  db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: err });
-
-    if (results.length === 0) {
-      return res.status(200).send("0"); // No quotes yet, start from 1
+    if (!lastQuote) {
+      return res.status(200).send('0'); // No quotes yet, start from 1
     }
 
-    const lastQuote = results[0].quote_number;
-    const numberOnly = parseInt(lastQuote.replace(/[^\d]/g, ''), 10);
+    const lastQuoteNumber = lastQuote.quote_number;
+    const numberOnly = parseInt(lastQuoteNumber.replace(/[^\d]/g, ''), 10);
 
     res.status(200).send(numberOnly.toString());
-  });
+  } catch (error) {
+    console.error('Error fetching last quote number:', error);
+    res.status(500).json({ error: error.message });
+  }
 };

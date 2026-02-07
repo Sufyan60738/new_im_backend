@@ -1,13 +1,24 @@
-// routes/customerRoutes.js
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
+const { validate } = require('../middleware/validateRequest');
+const { customerSchemas } = require('../middleware/validation');
 
-router.post('/', customerController.addCustomer);
+// Create
+router.post('/', validate(customerSchemas.create), customerController.addCustomer);
+
+// Read
 router.get('/', customerController.getCustomers);
+router.get('/:id', customerController.getCustomerById);
 
-// 🔥 Add this route for name list
-router.get('/names', customerController.getCustomerNames);
+// Names list
+router.get('/names/list', customerController.getCustomerNames);
 
+// Update
+router.put('/:id', validate(customerSchemas.update), customerController.updateCustomer);
+
+// Delete
+router.delete('/:id', customerController.deleteCustomer);
 
 module.exports = router;
+
