@@ -234,8 +234,15 @@ Vendor.hasMany(VendorPayment, {
  */
 const syncDatabase = async () => {
     try {
-        // Sync with alter: true to update schema without dropping data
-        await sequelize.sync({ alter: true });
+        // Use alter: false to prevent index accumulation (MySQL has 64 index limit)
+        // Only use alter: true when explicitly needed via environment variable
+        const shouldAlter = process.env.DB_SYNC_ALTER === 'true';
+
+        if (shouldAlter) {
+            console.log('⚠️  WARNING: Running with { alter: true } - this may cause index accumulation');
+        }
+
+        await sequelize.sync({ alter: shouldAlter });
         console.log('✅ Database synchronized successfully with Sequelize models');
     } catch (error) {
         console.error('❌ Error synchronizing database:', error);

@@ -32,6 +32,49 @@ router.get('/branches/public', branchController.getBranchesPublic);
 
 /**
  * @swagger
+ * /api/branches/public:
+ *   post:
+ *     summary: Create a new branch (public - for registration)
+ *     tags: [Branches]
+ *     description: Create branch without authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               -shop_id
+ *               - branch_name
+ *             properties:
+ *               shop_id:
+ *                 type: integer
+ *               branch_name:
+ *                 type: string
+ *               manager_name:
+ *                 type: string
+ *               contact_number:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Branch created successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Shop not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/branches/public', branchController.createBranchPublic);
+
+/**
+ * @swagger
  * /api/shops/{shopId}/branches:
  *   post:
  *     summary: Create a new branch for a shop
@@ -216,5 +259,32 @@ router.delete('/branches/:id', isAuthenticated, isShopOwner, branchController.de
  *         description: Server error
  */
 router.get('/branches/:id/stats', isAuthenticated, branchController.getBranchStats);
+
+/**
+ * @swagger
+ * /api/branches/{id}/set-main:
+ *   put:
+ *     summary: Set branch as main branch
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Branch ID
+ *     responses:
+ *       200:
+ *         description: Main branch updated successfully
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Branch not found
+ *       500:
+ *         description: Server error
+ */
+router.put('/branches/:id/set-main', isAuthenticated, isShopOwner, branchController.setMainBranch);
 
 module.exports = router;

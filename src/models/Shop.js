@@ -5,6 +5,7 @@ const sequelize = require('../config/sequelize');
  * Shop Model - Main shop/company entity for multi-tenant architecture
  * Each shop has a unique name and can have multiple branches
  */
+
 const Shop = sequelize.define('shops', {
     id: {
         type: DataTypes.INTEGER,

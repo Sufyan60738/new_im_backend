@@ -40,6 +40,47 @@ router.get('/public', shopController.getShopsPublic);
 
 /**
  * @swagger
+ * /api/shops/public:
+ *   post:
+ *     summary: Create a new shop (public - for registration)
+ *     tags: [Shops]
+ *     description: Create shop and main branch without authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - shop_name
+ *               - owner_name
+ *             properties:
+ *               shop_name:
+ *                 type: string
+ *               owner_name:
+ *                 type: string
+ *               contact_number:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Shop created successfully
+ *       400:
+ *         description: Validation error
+ *       500:
+ *         description: Server error
+ */
+router.post('/public', shopController.createShopPublic);
+
+/**
+ * @swagger
  * /api/shops:
  *   post:
  *     summary: Create a new shop (Super Admin only)

@@ -21,7 +21,15 @@ exports.register = async (req, res) => {
     shop_contact,
     shop_email,
     shop_address,
-    shop_city
+    shop_city,
+    // For creating new branch during registration
+    create_new_branch,
+    branch_name,
+    branch_manager_name,
+    branch_contact,
+    branch_email,
+    branch_address,
+    branch_city
   } = req.body;
 
   try {
@@ -107,6 +115,50 @@ exports.register = async (req, res) => {
         }, { transaction });
 
         finalBranchId = mainBranch.id;
+
+        // If user wants to create a custom branch during registration
+        if (create_new_branch && branch_name) {
+          // Validate branch name
+          if (branch_name.trim().length < 2) {
+            await transaction.rollback();
+            return res.status(400).json({
+              message: 'Branch name must be at least 2 characters long'
+            });
+          }
+
+          // Generate branch code for custom branch
+          const lastCustomBranch = await Branch.findOne({
+            where: { shop_id: newShop.id },
+            order: [['id', 'DESC']],
+            attributes: ['branch_code'],
+            transaction
+          });
+
+          let customBranchCode = `${newShop.shop_code}-BR002`;
+          if (lastCustomBranch && lastCustomBranch.branch_code) {
+            const lastNumber = parseInt(lastCustomBranch.branch_code.split('-BR')[1]);
+            const nextNumber = lastNumber + 1;
+            customBranchCode = `${newShop.shop_code}-BR${String(nextNumber).padStart(3, '0')}`;
+          }
+
+          // Create custom branch with user-provided details
+          // Convert empty strings to null for optional fields
+          const customBranch = await Branch.create({
+            shop_id: newShop.id,
+            branch_name: branch_name.trim(),
+            branch_code: customBranchCode,
+            manager_name: branch_manager_name ? branch_manager_name.trim() : name,
+            contact_number: branch_contact && branch_contact.trim() !== '' ? branch_contact.trim() : null,
+            email: branch_email && branch_email.trim() !== '' ? branch_email.trim() : null,
+            address: branch_address && branch_address.trim() !== '' ? branch_address.trim() : null,
+            city: branch_city && branch_city.trim() !== '' ? branch_city.trim() : null,
+            is_main_branch: false,
+            is_active: true
+          }, { transaction });
+
+          // Assign user to custom branch instead of main branch
+          finalBranchId = customBranch.id;
+        }
 
         // If creating new shop, user becomes shop owner
         finalRole = 'shop_owner';

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Inventory Management Backend - Setup Guide
 
 ## 📋 Prerequisites
@@ -153,3 +154,6 @@ MIT
 ## 🐛 Issues
 
 Report issues at: <repository-issues-url>
+=======
+# new_im_backend
+>>>>>>> afdc000ef53d7ff0c144e47da8fc6089a67b20ee

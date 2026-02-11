@@ -79,6 +79,107 @@ exports.createBranch = async (req, res) => {
 };
 
 /**
+ * Create new branch (Public - for registration)
+ * No authentication required
+ */
+exports.createBranchPublic = async (req, res) => {
+    try {
+        const {
+            shop_id,
+            branch_name,
+            manager_name,
+            contact_number,
+            email,
+            address,
+            city
+        } = req.body;
+
+        // Validate required fields
+        if (!shop_id || !branch_name) {
+            return res.status(400).json({
+                success: false,
+                message: 'Shop ID and branch name are required'
+            });
+        }
+
+        // Verify shop exists
+        const shop = await Shop.findByPk(shop_id);
+        if (!shop) {
+            return res.status(404).json({
+                success: false,
+                message: 'Shop not found'
+            });
+        }
+
+        // Check if branch name already exists in this shop
+        const existingBranch = await Branch.findOne({
+            where: {
+                shop_id,
+                branch_name: branch_name.trim(),
+                is_active: true
+            }
+        });
+
+        if (existingBranch) {
+            return res.status(400).json({
+                success: false,
+                message: `Branch "${branch_name}" already exists in this shop`
+            });
+        }
+
+        // Generate branch_code
+        const lastBranch = await Branch.findOne({
+            where: { shop_id },
+            order: [['id', 'DESC']],
+            attributes: ['branch_code']
+        });
+
+        let branchNumber = 1;
+        if (lastBranch && lastBranch.branch_code) {
+            const match = lastBranch.branch_code.match(/-BR(\d+)$/);
+            if (match) {
+                branchNumber = parseInt(match[1]) + 1;
+            }
+        }
+        const branch_code = `${shop.shop_code}-BR${String(branchNumber).padStart(3, '0')}`;
+
+        // Create branch
+        const branch = await Branch.create({
+            shop_id,
+            branch_name: branch_name.trim(),
+            branch_code: branch_code,
+            manager_name: manager_name && manager_name.trim() !== '' ? manager_name.trim() : null,
+            contact_number: contact_number && contact_number.trim() !== '' ? contact_number.trim() : null,
+            email: email && email.trim() !== '' ? email.trim() : null,
+            address: address && address.trim() !== '' ? address.trim() : null,
+            city: city && city.trim() !== '' ? city.trim() : null,
+            is_main_branch: false,
+            is_active: true
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Branch created successfully',
+            branch: {
+                id: branch.id,
+                shop_id: branch.shop_id,
+                branch_name: branch.branch_name,
+                branch_code: branch.branch_code,
+                manager_name: branch.manager_name,
+                is_main_branch: branch.is_main_branch
+            }
+        });
+    } catch (error) {
+        console.error('Create branch public error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+}
+
+/**
  * Get all branches for a shop
  */
 exports.getBranches = async (req, res) => {
@@ -386,3 +487,56 @@ exports.getBranchStats = async (req, res) => {
         });
     }
 };
+
+/**
+ * Set branch as main branch
+ */
+exports.setMainBranch = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const branch = await Branch.findByPk(id);
+
+        if (!branch) {
+            return res.status(404).json({
+                success: false,
+                message: 'Branch not found'
+            });
+        }
+
+        // Check access
+        if (req.user.role !== 'super_admin' &&
+            req.user.role !== 'shop_owner' &&
+            req.user.shop_id !== branch.shop_id) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Only shop owners can set main branch.'
+            });
+        }
+
+        // Check if branch is active
+        if (!branch.is_active) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot set an inactive branch as main branch'
+            });
+        }
+
+        // Set this branch as main (the beforeSave hook will unset others)
+        await branch.update({ is_main_branch: true });
+
+        res.status(200).json({
+            success: true,
+            message: 'Main branch updated successfully',
+            branch
+        });
+    } catch (error) {
+        console.error('Set main branch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+};
+

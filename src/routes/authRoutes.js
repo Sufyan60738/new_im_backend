@@ -67,7 +67,21 @@ const authController = require('../controllers/authController');
  *       500:
  *         description: Server error
  */
-router.post('/register', authController.register);
+// Middleware to check if public registration is allowed
+const checkRegistrationAllowed = (req, res, next) => {
+    const allowPublicRegistration = process.env.ALLOW_PUBLIC_REGISTRATION !== 'false';
+
+    if (!allowPublicRegistration) {
+        return res.status(403).json({
+            success: false,
+            message: 'Public registration is currently disabled. Please contact the administrator.'
+        });
+    }
+
+    next();
+};
+
+router.post('/register', checkRegistrationAllowed, authController.register);
 
 /**
  * @swagger
